@@ -1,5 +1,5 @@
 # QuoteApi
-## Creating a Rest API for Quotes 
+## Creating a Web API for Quotes 
 
 ### Utilizing Microsoft.dotnet-httprepl to test HTTP (GET, POST, PUT, DELETE). 
 
