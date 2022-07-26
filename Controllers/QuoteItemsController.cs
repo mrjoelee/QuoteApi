@@ -9,10 +9,19 @@ using QuoteApi.Models;
 
 namespace QuoteApi.Controllers
 {
-    [Route("api/[QuoteItems]")]
+
+    [Route("api/[controller]")]
     [ApiController]
     public class QuoteItemsController : ControllerBase
     {
+        private static QuoteItemDTO QuoteToDTO(QuoteItem quotetoItem) =>
+            new QuoteItemDTO
+            {
+                Id = quotetoItem.Id,
+                Quote = quotetoItem.Quote,
+                Author = quotetoItem.Author
+            };
+
         private readonly QuoteContext _context;
 
         public QuoteItemsController(QuoteContext context)
@@ -22,23 +31,19 @@ namespace QuoteApi.Controllers
 
         // GET: api/QuoteItems
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<QuoteItem>>> GetQuoteItems()
+        
+        public async Task<ActionResult<IEnumerable<QuoteItemDTO>>> GetQuoteItems()
         {
-          if (_context.QuoteItems == null)
-          {
-              return NotFound();
-          }
-            return await _context.QuoteItems.ToListAsync();
+            return await _context.QuoteItems
+                .Select(x => QuoteToDTO(x))
+                .ToListAsync();
+
         }
 
         // GET: api/QuoteItems/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<QuoteItem>> GetQuoteItem(long id)
+        public async Task<ActionResult<QuoteItemDTO>> GetQuoteItem(long id)
         {
-          if (_context.QuoteItems == null)
-          {
-              return NotFound();
-          }
             var quoteItem = await _context.QuoteItems.FindAsync(id);
 
             if (quoteItem == null)
@@ -46,35 +51,35 @@ namespace QuoteApi.Controllers
                 return NotFound();
             }
 
-            return quoteItem;
+            return QuoteToDTO(quoteItem);
         }
 
         // PUT: api/QuoteItems/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutQuoteItem(long id, QuoteItem quoteItem)
+        public async Task<IActionResult> UpdateQuoteItem(long id, QuoteItemDTO quoteItemDTO)
         {
-            if (id != quoteItem.Id)
+            if (id != quoteItemDTO.Id)
             {
                 return BadRequest();
             }
 
-            _context.Entry(quoteItem).State = EntityState.Modified;
+            var quoteItem = await _context.QuoteItems.FindAsync(id);
+            if (quoteItem == null)
+            {
+                return NotFound();
+            }
+
+            quoteItem.Quote = quoteItemDTO.Quote;
+            quoteItem.Author = quoteItemDTO.Author;
 
             try
             {
                 await _context.SaveChangesAsync();
             }
-            catch (DbUpdateConcurrencyException)
+            catch (DbUpdateConcurrencyException) when (!QuoteItemExists(id))
             {
-                if (!QuoteItemExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound();
             }
 
             return NoContent();
@@ -83,24 +88,34 @@ namespace QuoteApi.Controllers
         // POST: api/QuoteItems
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<QuoteItem>> PostQuoteItem(QuoteItem quoteItem)
+        public async Task<ActionResult<QuoteItemDTO>> CreateQuoteItem(QuoteItemDTO quoteItemDTO)
         {
+            var quoteItem = new QuoteItem
+            {
+                Author = quoteItemDTO.Author,
+                Quote = quoteItemDTO.Quote
+            };
+
             _context.QuoteItems.Add(quoteItem);
             await _context.SaveChangesAsync();
 
-            //return CreatedAtAction("GetQuoteItem", new { id = quoteItem.Id }, quoteItem);
-            return CreatedAtAction(nameof(GetQuoteItem), new { id = quoteItem.Id }, quoteItem);
+            return CreatedAtAction(
+                nameof(GetQuoteItem),
+                new { id = quoteItem.Id },
+                QuoteToDTO(quoteItem));
         }
+
+        //Delete all
+        //TODO:Create a HTTP Delete ALL 
+        
+                
 
         // DELETE: api/QuoteItems/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteQuoteItem(long id)
         {
-            if (_context.QuoteItems == null)
-            {
-                return NotFound();
-            }
             var quoteItem = await _context.QuoteItems.FindAsync(id);
+
             if (quoteItem == null)
             {
                 return NotFound();
@@ -114,7 +129,9 @@ namespace QuoteApi.Controllers
 
         private bool QuoteItemExists(long id)
         {
-            return (_context.QuoteItems?.Any(e => e.Id == id)).GetValueOrDefault();
+            return _context.QuoteItems.Any(e => e.Id == id);
         }
+        
+
     }
 }
